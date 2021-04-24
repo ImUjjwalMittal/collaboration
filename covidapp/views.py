@@ -14,6 +14,11 @@ from keras.models import Sequential
 from keras.layers import LSTM, Dense
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
+import matplotlib 
+matplotlib.use('Agg')
+
+import io
+import urllib, base64
 
 
 def index(request):
@@ -67,7 +72,7 @@ def index(request):
     model.add(LSTM(25))
     model.add(Dense(1))
     model.compile(loss='mean_squared_error', optimizer='adam')
-    model.fit(train_x, train_y, epochs=3, batch_size=1)
+    model.fit(train_x, train_y, epochs=1, batch_size=1)
 
     test_x=data_x[training_size:,:]
     test_y=data_y[training_size:,:]
@@ -106,10 +111,20 @@ def index(request):
 
     test_data['Predictions'] = test_predict
 
-    fig = plt.figure(figsize=(15,12))
+    figu = plt.figure(figsize=(15,12))
     plt.plot(train_data['Close'])
     plt.plot(test_data['Predictions'])
     plt.plot(test_data['Close'])
 
-    context = {'response' : plt}
+    fig = plt.gcf()
+    #convert graph into dtring buffer and then we convert 64 bit code into image
+    buf = io.BytesIO()
+    fig.savefig(buf,format='png')
+    buf.seek(0)
+    string = base64.b64encode(buf.read())
+    uri =  urllib.parse.quote(string)
+
+
+
+    context = {'data' : uri} 
     return render(request , 'index.html' , context)
