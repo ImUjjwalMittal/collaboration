@@ -3,6 +3,9 @@ from django.http import HttpResponse
 import requests
 import json 
 
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+
 import math
 import numpy as np 
 import pandas as pd
@@ -20,7 +23,7 @@ matplotlib.use('Agg')
 import io
 import urllib, base64
 
-
+@api_view()
 def index(request):
 
     back_period = 30 
@@ -123,8 +126,4 @@ def index(request):
     buf.seek(0)
     string = base64.b64encode(buf.read())
     uri =  urllib.parse.quote(string)
-
-
-
-    context = {'data' : uri} 
-    return render(request , 'index.html' , context)
+    return Response({'context' : uri})
