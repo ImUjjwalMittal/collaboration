@@ -5,11 +5,17 @@ import json
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from django.http import FileResponse
+import sweetviz
+from pandas_profiling import ProfileReport
+import plotly
+import plotly.express as px
 
 import math
 import numpy as np 
 import pandas as pd
 import yfinance as yf
+from plotly.offline import plot 
 import seaborn as sns
 import plotly.graph_objs as go
 import matplotlib.pyplot as plt
@@ -17,7 +23,9 @@ from keras.models import Sequential
 from keras.layers import LSTM, Dense
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
-import matplotlib 
+import matplotlib  
+from PIL import Image
+from io import BytesIO 
 matplotlib.use('Agg')
 
 import io
@@ -75,7 +83,7 @@ def index(request):
     model.add(LSTM(25))
     model.add(Dense(1))
     model.compile(loss='mean_squared_error', optimizer='adam')
-    model.fit(train_x, train_y, epochs=1, batch_size=1)
+    model.fit(train_x, train_y, epochs=0, batch_size=1)
 
     test_x=data_x[training_size:,:]
     test_y=data_y[training_size:,:]
@@ -122,8 +130,44 @@ def index(request):
     fig = plt.gcf()
     #convert graph into dtring buffer and then we convert 64 bit code into image
     buf = io.BytesIO()
-    fig.savefig(buf,format='png')
+    fig.savefig(buf,format='jpg')
     buf.seek(0)
-    string = base64.b64encode(buf.read())
-    uri =  urllib.parse.quote(string)
-    return Response({'context' : uri})
+    stri = base64.b64encode(buf.read())
+    return render(request , 'index.html' , {'graph' : stri})
+
+
+@api_view()
+def index2(request):
+    data_stocks = yf.Tickers('MSFT AAPL GOOG TSLA FB AMZN')
+    data_fetch = data_stocks.history(period='1d', interval='1m')
+    raw_data = pd.DataFrame(data=data_fetch)
+    raw_data = raw_data.drop(['Dividends','Stock Splits'], axis=1)
+    raw_data.to_csv(r'D__\Internship - LSCG\Stocks_Data\All Stocks.csv')
+    data = raw_data.drop(['High','Low','Open','Volume'], axis=1)
+    data.to_csv(r'D__\Internship - LSCG\Stocks_Data\Closing Stocks.csv',header=False)
+
+    data = pd.read_csv(r'D__\Internship - LSCG\Stocks_Data\Closing Stocks.csv')
+    data.columns = ['Datetime','AAPL', 'AMZN','FB', 'GOOG', 'MSFT', 'TSLA']
+   
+    data.to_csv(r'D__\Internship - LSCG\Stocks_Data\Closing Stocks.csv',index=None)
+    data_plot = pd.read_csv(r'D__\Internship - LSCG\Stocks_Data\Closing Stocks.csv')
+    data_plot.plot(x='Datetime',y=['AAPL','AMZN','FB','GOOG','MSFT','TSLA'],style='-')
+    data_plot.head()
+    plt.title('Relative price change')
+    plt.legend(loc='upper left', fontsize=12)
+    plt.tight_layout()
+    plt.grid(True)
+    fig = px.line(data_plot,x=data_plot['Datetime'],y=['AMZN','AAPL','MSFT','TSLA','FB','GOOG'],title='Interactive Stocks')
+    fig.update_layout(template='plotly_dark')
+    plt_div = plot(fig, output_type='div')
+    return render(request , 'index.html' , {'graph' : plt_div})
+    
+
+
+
+
+
+
+    
+
+
